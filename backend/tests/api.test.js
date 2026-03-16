@@ -1,5 +1,5 @@
 // ================================================
-// Mocha + Chai + Supertest — API Tests
+// Mocha + Chai + Supertest ΓÇö API Tests
 // Run: npm test  (from backend folder)
 // ================================================
 const request  = require('supertest');
@@ -30,9 +30,30 @@ const customerData = {
 };
 
 // ---- Connect once before all tests ----
+// ---- Connect once before all tests ----
 before(async () => {
   await mongoose.connect(process.env.MONGO_URI);
   console.log('  Test DB connected: pizzastore_test');
+
+  // create admin user if not exists
+  const User = require('../models/User');
+  const bcrypt = require('bcryptjs');
+
+  const existingAdmin = await User.findOne({ email: 'admin@pizza.com' });
+
+  if (!existingAdmin) {
+    const hashedPassword = await bcrypt.hash('admin123', 10);
+
+    await User.create({
+      name: 'Admin',
+      email: 'admin@pizza.com',
+      password: hashedPassword,
+      role: 'admin',
+      phone: '9999999999'
+    });
+
+    console.log('  Test admin created.');
+  }
 });
 
 // ---- Disconnect after all tests ----
@@ -67,7 +88,7 @@ after(async () => {
 // ================================================
 describe('AUTH API', () => {
 
-  it('POST /api/auth/register — register new customer', async () => {
+  it('POST /api/auth/register ΓÇö register new customer', async () => {
     const res = await request(app).post('/api/auth/register').send(customerData);
     expect(res.status).to.equal(201);
     expect(res.body.success).to.be.true;
@@ -77,19 +98,19 @@ describe('AUTH API', () => {
     customerId    = res.body.user.id;
   });
 
-  it('POST /api/auth/register — reject duplicate email', async () => {
+  it('POST /api/auth/register ΓÇö reject duplicate email', async () => {
     const res = await request(app).post('/api/auth/register').send(customerData);
     expect(res.status).to.equal(400);
     expect(res.body.success).to.be.false;
   });
 
-  it('POST /api/auth/register — reject missing fields', async () => {
+  it('POST /api/auth/register ΓÇö reject missing fields', async () => {
     const res = await request(app).post('/api/auth/register').send({ email: 'x@x.com' });
     expect(res.status).to.equal(400);
     expect(res.body.success).to.be.false;
   });
 
-  it('POST /api/auth/login — admin login successfully', async () => {
+  it('POST /api/auth/login ΓÇö admin login successfully', async () => {
     const res = await request(app).post('/api/auth/login').send({ email: 'admin@pizza.com', password: 'admin123' });
     expect(res.status).to.equal(200);
     expect(res.body.success).to.be.true;
@@ -97,25 +118,25 @@ describe('AUTH API', () => {
     adminToken = res.body.token;
   });
 
-  it('POST /api/auth/login — reject wrong password', async () => {
+  it('POST /api/auth/login ΓÇö reject wrong password', async () => {
     const res = await request(app).post('/api/auth/login').send({ email: 'admin@pizza.com', password: 'wrongpass' });
     expect(res.status).to.equal(400);
     expect(res.body.success).to.be.false;
   });
 
-  it('POST /api/auth/login — reject unknown email', async () => {
-    const res = await request(app).post('/api/auth/login').send({ email: 'nobody@x.com', password: 'pass123' });
+  it('POST /api/auth/login ΓÇö reject unknown email', async () => {
+    const res = await request(app).post('/api/auth/login').send({ email: 'nobody@x.com', password: 'pass123' });    
     expect(res.status).to.equal(400);
     expect(res.body.success).to.be.false;
   });
 
-  it('GET /api/auth/me — return current user', async () => {
+  it('GET /api/auth/me ΓÇö return current user', async () => {
     const res = await request(app).get('/api/auth/me').set('Authorization', 'Bearer ' + customerToken);
     expect(res.status).to.equal(200);
     expect(res.body.user).to.have.property('email');
   });
 
-  it('GET /api/auth/me — reject without token', async () => {
+  it('GET /api/auth/me ΓÇö reject without token', async () => {
     const res = await request(app).get('/api/auth/me');
     expect(res.status).to.equal(401);
   });
@@ -126,7 +147,7 @@ describe('AUTH API', () => {
 // ================================================
 describe('CATEGORY API', () => {
 
-  it('GET /api/categories — return all categories', async () => {
+  it('GET /api/categories ΓÇö return all categories', async () => {
     const res = await request(app).get('/api/categories');
     expect(res.status).to.equal(200);
     expect(res.body.success).to.be.true;
@@ -134,7 +155,7 @@ describe('CATEGORY API', () => {
     if (res.body.data.length > 0) categoryId = res.body.data[0]._id;
   });
 
-  it('POST /api/categories — admin creates category', async () => {
+  it('POST /api/categories ΓÇö admin creates category', async () => {
     const res = await request(app).post('/api/categories')
       .set('Authorization', 'Bearer ' + adminToken)
       .send({ categoryName: 'TestCat' + Date.now() });
@@ -143,14 +164,14 @@ describe('CATEGORY API', () => {
     categoryId = res.body.data._id;
   });
 
-  it('POST /api/categories — customer blocked (403)', async () => {
+  it('POST /api/categories ΓÇö customer blocked (403)', async () => {
     const res = await request(app).post('/api/categories')
       .set('Authorization', 'Bearer ' + customerToken)
       .send({ categoryName: 'Hack' });
     expect(res.status).to.equal(403);
   });
 
-  it('POST /api/categories — reject missing categoryName', async () => {
+  it('POST /api/categories ΓÇö reject missing categoryName', async () => {
     const res = await request(app).post('/api/categories')
       .set('Authorization', 'Bearer ' + adminToken).send({});
     expect(res.status).to.equal(400);
@@ -162,13 +183,13 @@ describe('CATEGORY API', () => {
 // ================================================
 describe('MENU API', () => {
 
-  it('GET /api/menu — return all menu items', async () => {
+  it('GET /api/menu ΓÇö return all menu items', async () => {
     const res = await request(app).get('/api/menu');
     expect(res.status).to.equal(200);
     expect(res.body.data).to.be.an('array');
   });
 
-  it('POST /api/menu — admin creates item', async () => {
+  it('POST /api/menu ΓÇö admin creates item', async () => {
     const res = await request(app).post('/api/menu')
       .set('Authorization', 'Bearer ' + adminToken)
       .send({ name: 'Test Pizza', price: 199, categoryId, description: 'Yummy', isAvailable: true });
@@ -178,14 +199,14 @@ describe('MENU API', () => {
     cartItemId  = res.body.data._id;
   });
 
-  it('POST /api/menu — reject missing fields', async () => {
+  it('POST /api/menu ΓÇö reject missing fields', async () => {
     const res = await request(app).post('/api/menu')
       .set('Authorization', 'Bearer ' + adminToken)
       .send({ name: 'No Price Pizza' });
     expect(res.status).to.equal(400);
   });
 
-  it('PUT /api/menu/:id — admin updates item', async () => {
+  it('PUT /api/menu/:id ΓÇö admin updates item', async () => {
     const res = await request(app).put('/api/menu/' + menuItemId)
       .set('Authorization', 'Bearer ' + adminToken)
       .send({ name: 'Updated Pizza', price: 249 });
@@ -193,13 +214,13 @@ describe('MENU API', () => {
     expect(res.body.data.name).to.equal('Updated Pizza');
   });
 
-  it('GET /api/menu?search — filter items by search', async () => {
+  it('GET /api/menu?search ΓÇö filter items by search', async () => {
     const res = await request(app).get('/api/menu?search=Updated');
     expect(res.status).to.equal(200);
     expect(res.body.data.length).to.be.greaterThan(0);
   });
 
-  it('DELETE /api/menu/:id — customer blocked (403)', async () => {
+  it('DELETE /api/menu/:id ΓÇö customer blocked (403)', async () => {
     const res = await request(app).delete('/api/menu/' + menuItemId)
       .set('Authorization', 'Bearer ' + customerToken);
     expect(res.status).to.equal(403);
@@ -211,14 +232,14 @@ describe('MENU API', () => {
 // ================================================
 describe('CART API', () => {
 
-  it('GET /api/cart — customer gets their cart', async () => {
+  it('GET /api/cart ΓÇö customer gets their cart', async () => {
     const res = await request(app).get('/api/cart')
       .set('Authorization', 'Bearer ' + customerToken);
     expect(res.status).to.equal(200);
     expect(res.body.success).to.be.true;
   });
 
-  it('POST /api/cart/add — add item to cart', async () => {
+  it('POST /api/cart/add ΓÇö add item to cart', async () => {
     const res = await request(app).post('/api/cart/add')
       .set('Authorization', 'Bearer ' + customerToken)
       .send({ itemId: cartItemId, quantity: 1 });
@@ -227,12 +248,12 @@ describe('CART API', () => {
     expect(res.body.data.items.length).to.be.greaterThan(0);
   });
 
-  it('POST /api/cart/add — reject without token (401)', async () => {
+  it('POST /api/cart/add ΓÇö reject without token (401)', async () => {
     const res = await request(app).post('/api/cart/add').send({ itemId: cartItemId });
     expect(res.status).to.equal(401);
   });
 
-  it('PUT /api/cart/update — update item quantity', async () => {
+  it('PUT /api/cart/update ΓÇö update item quantity', async () => {
     const res = await request(app).put('/api/cart/update')
       .set('Authorization', 'Bearer ' + customerToken)
       .send({ itemId: cartItemId, quantity: 2 });
@@ -245,7 +266,7 @@ describe('CART API', () => {
 // ================================================
 describe('ADDRESS API', () => {
 
-  it('POST /api/addresses — add new address', async () => {
+  it('POST /api/addresses ΓÇö add new address', async () => {
     const res = await request(app).post('/api/addresses')
       .set('Authorization', 'Bearer ' + customerToken)
       .send({ houseNumber: '12A', street: 'MG Road', city: 'Vijayawada', state: 'AP', pincode: '520001', isDefault: true });
@@ -254,14 +275,14 @@ describe('ADDRESS API', () => {
     addressId = res.body.data._id;
   });
 
-  it('GET /api/addresses — return customer addresses', async () => {
+  it('GET /api/addresses ΓÇö return customer addresses', async () => {
     const res = await request(app).get('/api/addresses')
       .set('Authorization', 'Bearer ' + customerToken);
     expect(res.status).to.equal(200);
     expect(res.body.data.length).to.be.greaterThan(0);
   });
 
-  it('POST /api/addresses — reject missing fields', async () => {
+  it('POST /api/addresses ΓÇö reject missing fields', async () => {
     const res = await request(app).post('/api/addresses')
       .set('Authorization', 'Bearer ' + customerToken)
       .send({ houseNumber: '5B' });
@@ -274,7 +295,7 @@ describe('ADDRESS API', () => {
 // ================================================
 describe('ORDER API', () => {
 
-  it('POST /api/orders — place order from cart', async () => {
+  it('POST /api/orders ΓÇö place order from cart', async () => {
     const res = await request(app).post('/api/orders')
       .set('Authorization', 'Bearer ' + customerToken)
       .send({ addressId, deliveryMode: 'delivery', paymentMode: 'cash' });
@@ -284,27 +305,27 @@ describe('ORDER API', () => {
     orderId = res.body.data._id;
   });
 
-  it('GET /api/orders/my — customer sees own orders', async () => {
+  it('GET /api/orders/my ΓÇö customer sees own orders', async () => {
     const res = await request(app).get('/api/orders/my')
       .set('Authorization', 'Bearer ' + customerToken);
     expect(res.status).to.equal(200);
     expect(res.body.data.length).to.be.greaterThan(0);
   });
 
-  it('GET /api/orders/all — admin sees all orders', async () => {
+  it('GET /api/orders/all ΓÇö admin sees all orders', async () => {
     const res = await request(app).get('/api/orders/all')
       .set('Authorization', 'Bearer ' + adminToken);
     expect(res.status).to.equal(200);
     expect(res.body.data).to.be.an('array');
   });
 
-  it('GET /api/orders/all — customer blocked (403)', async () => {
+  it('GET /api/orders/all ΓÇö customer blocked (403)', async () => {
     const res = await request(app).get('/api/orders/all')
       .set('Authorization', 'Bearer ' + customerToken);
     expect(res.status).to.equal(403);
   });
 
-  it('PUT /api/orders/:id/status — admin accepts order', async () => {
+  it('PUT /api/orders/:id/status ΓÇö admin accepts order', async () => {
     const res = await request(app).put('/api/orders/' + orderId + '/status')
       .set('Authorization', 'Bearer ' + adminToken)
       .send({ orderStatus: 'accepted', messageText: 'Preparing your order!' });
@@ -312,7 +333,7 @@ describe('ORDER API', () => {
     expect(res.body.data.orderStatus).to.equal('accepted');
   });
 
-  it('PUT /api/orders/:id/cancel — customer cancels pending order', async () => {
+  it('PUT /api/orders/:id/cancel ΓÇö customer cancels pending order', async () => {
     // Place a new order to cancel
     const cartRes = await request(app).post('/api/cart/add')
       .set('Authorization', 'Bearer ' + customerToken)
@@ -329,7 +350,7 @@ describe('ORDER API', () => {
     }
   });
 
-  it('GET /api/orders/admin/revenue — admin gets revenue data', async () => {
+  it('GET /api/orders/admin/revenue ΓÇö admin gets revenue data', async () => {
     const res = await request(app).get('/api/orders/admin/revenue')
       .set('Authorization', 'Bearer ' + adminToken);
     expect(res.status).to.equal(200);
@@ -342,7 +363,7 @@ describe('ORDER API', () => {
 // ================================================
 describe('MESSAGE API', () => {
 
-  it('GET /api/messages — customer sees messages', async () => {
+  it('GET /api/messages ΓÇö customer sees messages', async () => {
     const res = await request(app).get('/api/messages')
       .set('Authorization', 'Bearer ' + customerToken);
     expect(res.status).to.equal(200);
@@ -350,12 +371,12 @@ describe('MESSAGE API', () => {
     expect(res.body.data.length).to.be.greaterThan(0);
   });
 
-  it('GET /api/messages — reject without token (401)', async () => {
+  it('GET /api/messages ΓÇö reject without token (401)', async () => {
     const res = await request(app).get('/api/messages');
     expect(res.status).to.equal(401);
   });
 
-  it('PUT /api/messages/:id/read — mark message as read', async () => {
+  it('PUT /api/messages/:id/read ΓÇö mark message as read', async () => {
     const msgs = await request(app).get('/api/messages')
       .set('Authorization', 'Bearer ' + customerToken);
     const msgId = msgs.body.data[0]?._id;
@@ -372,7 +393,7 @@ describe('MESSAGE API', () => {
 // ================================================
 describe('PAYMENT API', () => {
 
-  it('GET /api/payments/:orderId — get payment for order', async () => {
+  it('GET /api/payments/:orderId ΓÇö get payment for order', async () => {
     const res = await request(app).get('/api/payments/' + orderId)
       .set('Authorization', 'Bearer ' + customerToken);
     expect(res.status).to.equal(200);
@@ -380,7 +401,7 @@ describe('PAYMENT API', () => {
     expect(res.body.data.paidAmount).to.be.greaterThan(0);
   });
 
-  it('PUT /api/payments/:orderId/pay — mark payment done', async () => {
+  it('PUT /api/payments/:orderId/pay ΓÇö mark payment done', async () => {
     const res = await request(app).put('/api/payments/' + orderId + '/pay')
       .set('Authorization', 'Bearer ' + customerToken)
       .send({ transactionId: 'TXN' + Date.now() });
