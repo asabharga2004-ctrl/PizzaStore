@@ -1,105 +1,47 @@
-# Pizza Store — Full Stack MERN (Domino's Style)
-# Redux + Formik + Yup + Jest + Mocha + Chai + Supertest
-
-=================================================
-PROJECT STRUCTURE
-=================================================
-
+#  Pizza Store — MERN App
+> Domino's style pizza ordering app — Redux + Formik + Yup + Jest + Mocha
+##  Project Structure
 PizzaStore/
 ├── backend/
-│   ├── models/          ← 8 MongoDB models (ER Diagram)
-│   ├── routes/          ← All REST API routes
-│   ├── middleware/       ← JWT auth middleware
-│   ├── tests/
-│   │   └── api.test.js  ← Mocha + Chai + Supertest
+│   ├── models/       ← 8 MongoDB models
+│   ├── routes/       ← REST API routes
+│   ├── middleware/   ← JWT auth
+│   ├── tests/        ← Mocha + Chai + Supertest
 │   ├── server.js
-│   ├── seed.js
-│   └── .env
+│   └── seed.js
 └── frontend/
-    ├── src/
-    │   ├── store/
-    │   │   ├── index.js         ← Redux store
-    │   │   └── slices/
-    │   │       ├── authSlice.js
-    │   │       ├── menuSlice.js
-    │   │       ├── cartSlice.js
-    │   │       ├── orderSlice.js
-    │   │       └── messageSlice.js
-    │   ├── pages/
-    │   │   ├── Login.js         ← Formik + Yup
-    │   │   ├── Register.js      ← Formik + Yup
-    │   │   ├── MenuPage.js      ← Redux
-    │   │   ├── CartPage.js      ← Redux + Formik + Yup (address)
-    │   │   ├── OrdersPage.js    ← Redux
-    │   │   ├── MessagesPage.js  ← Redux
-    │   │   ├── AdminMenu.js     ← Redux + Formik + Yup
-    │   │   ├── AdminOrders.js   ← Redux
-    │   │   └── AdminRevenue.js  ← Redux
-    │   ├── __tests__/
-    │   │   ├── authSlice.test.js   ← Jest
-    │   │   ├── cartSlice.test.js   ← Jest
-    │   │   ├── menuSlice.test.js   ← Jest
-    │   │   └── orderSlice.test.js  ← Jest
-    │   └── App.js
+    └── src/
+        ├── store/    ← Redux slices
+        ├── pages/    ← UI pages
+        └── App.js
 
+## ▶ Run Locally
+# Terminal 1 — Backend
+cd backend
+npm install
+node seed.js
+node server.js
 
-=================================================
-STEP-BY-STEP COMMANDS
-=================================================
+# Terminal 2 — Frontend
+cd frontend
+npm install
+npm start
 
-TERMINAL 1 — MongoDB (Keep open always)
-  mongod --dbpath C:\data\db
+##  Login
 
+| Role | Email | Password |
+|---|---|---|
+| Admin | admin@pizza.com | admin123 |
+| Customer | Register at /register | — |
 
-TERMINAL 2 — Backend
-  cd backend
-  npm install
-  node seed.js
-  node server.js
+##  Tests
+cd backend && npm test
+cd frontend && npm test
 
-  Wait for:
-    MongoDB connected!
-    Backend running at http://localhost:5000
+##  Tech Stack
 
-
-TERMINAL 3 — Frontend
-  cd frontend
-  npm install
-  npm start
-
-  Wait for: Compiled successfully!
-  Opens: http://localhost:3000
-
-
-=================================================
-RUN TESTS
-=================================================
-
-Backend tests (Mocha + Chai + Supertest):
-  cd backend
-  npm test
-
-Frontend tests (Jest - Redux slice unit tests):
-  cd frontend
-  npm test
-
-
-=================================================
-LOGIN CREDENTIALS
-=================================================
-  Admin:    admin@pizza.com / admin123
-  Customer: Register a new account at /register
-
-
-=================================================
-TECHNOLOGIES USED
-=================================================
-  Redux Toolkit     → Global state management
-  Formik            → Form handling (Login, Register, Cart address, Admin menu)
-  Yup               → Form validation schemas
-  Jest              → Frontend unit tests (Redux slices)
-  Mocha             → Backend API test runner
-  Chai              → Assertion library
-  Supertest         → HTTP endpoint testing
-  Bebas Neue font   → Domino's style headings
-  Dark theme (#0f0f0f + #e63312) → Domino's red-black color scheme
+| Layer | Tech |
+|---|---|
+| Frontend | React, Redux Toolkit, Formik, Yup |
+| Backend | Node.js, Express, MongoDB, JWT |
+| Testing | Jest, Mocha, Chai, Supertest |
