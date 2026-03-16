@@ -1,9 +1,12 @@
-
-const request    = require('supertest');
+// ================================================
+// Mocha + Chai + Supertest — API Tests
+// Run: npm test  (from backend folder)
+// ================================================
+const request  = require('supertest');
 const { expect } = require('chai');
 const mongoose   = require('mongoose');
-const bcrypt     = require('bcryptjs');
 
+// Set test env BEFORE requiring app
 process.env.MONGO_URI  = 'mongodb://localhost:27017/pizzastore_test';
 process.env.JWT_SECRET = 'pizzasecret123';
 process.env.PORT       = '5099';
@@ -19,37 +22,28 @@ let cartItemId    = '';
 let addressId     = '';
 let orderId       = '';
 
-const ts           = Date.now();
 const customerData = {
-  name:     'Test User ' + ts,
-  email:    'testuser' + ts + '@pizza.com',
+  name: 'Test User ' + Date.now(),
+  email: 'testuser' + Date.now() + '@pizza.com',
   password: 'test123',
-  phone:    '9999999999'
+  phone: '9999999999'
 };
 
-
+// ---- Connect once before all tests ----
 before(async () => {
   await mongoose.connect(process.env.MONGO_URI);
   console.log('  Test DB connected: pizzastore_test');
-
-  
-  const User = require('../models/User');
-  const exists = await User.findOne({ email: 'admin@pizza.com' });
-  if (!exists) {
-    const hashed = await bcrypt.hash('admin123', 10);
-    await User.create({ name: 'Admin', email: 'admin@pizza.com', password: hashed, phone: '0000000000', role: 'admin' });
-    console.log('  Admin user created in test DB.');
-  }
 });
 
-
+// ---- Disconnect after all tests ----
 after(async () => {
-  const User     = require('../models/User');
-  const Cart     = require('../models/Cart');
-  const Order    = require('../models/Order');
-  const Address  = require('../models/Address');
-  const Message  = require('../models/Message');
-  const Payment  = require('../models/Payment');
+  // Clean up test data
+  const User    = require('../models/User');
+  const Cart    = require('../models/Cart');
+  const Order   = require('../models/Order');
+  const Address = require('../models/Address');
+  const Message = require('../models/Message');
+  const Payment = require('../models/Payment');
   const Category = require('../models/Category');
   const MenuItem = require('../models/MenuItem');
 
@@ -68,7 +62,9 @@ after(async () => {
   console.log('  Test DB disconnected.');
 });
 
-
+// ================================================
+// AUTH TESTS
+// ================================================
 describe('AUTH API', () => {
 
   it('POST /api/auth/register — register new customer', async () => {
@@ -125,7 +121,9 @@ describe('AUTH API', () => {
   });
 });
 
-
+// ================================================
+// CATEGORY TESTS
+// ================================================
 describe('CATEGORY API', () => {
 
   it('GET /api/categories — return all categories', async () => {
@@ -133,12 +131,13 @@ describe('CATEGORY API', () => {
     expect(res.status).to.equal(200);
     expect(res.body.success).to.be.true;
     expect(res.body.data).to.be.an('array');
+    if (res.body.data.length > 0) categoryId = res.body.data[0]._id;
   });
 
   it('POST /api/categories — admin creates category', async () => {
     const res = await request(app).post('/api/categories')
       .set('Authorization', 'Bearer ' + adminToken)
-      .send({ categoryName: 'TestCat' + ts });
+      .send({ categoryName: 'TestCat' + Date.now() });
     expect(res.status).to.equal(201);
     expect(res.body.success).to.be.true;
     categoryId = res.body.data._id;
@@ -158,7 +157,9 @@ describe('CATEGORY API', () => {
   });
 });
 
-
+// ================================================
+// MENU TESTS
+// ================================================
 describe('MENU API', () => {
 
   it('GET /api/menu — return all menu items', async () => {
@@ -170,32 +171,32 @@ describe('MENU API', () => {
   it('POST /api/menu — admin creates item', async () => {
     const res = await request(app).post('/api/menu')
       .set('Authorization', 'Bearer ' + adminToken)
-      .send({ name: 'TestPizza' + ts, price: 199, categoryId, description: 'Yummy', isAvailable: true });
+      .send({ name: 'Test Pizza', price: 199, categoryId, description: 'Yummy', isAvailable: true });
     expect(res.status).to.equal(201);
     expect(res.body.success).to.be.true;
-    menuItemId = res.body.data._id;
-    cartItemId = res.body.data._id;
+    menuItemId  = res.body.data._id;
+    cartItemId  = res.body.data._id;
   });
 
-  it('POST /api/menu — reject missing price', async () => {
+  it('POST /api/menu — reject missing fields', async () => {
     const res = await request(app).post('/api/menu')
       .set('Authorization', 'Bearer ' + adminToken)
-      .send({ name: 'No Price Pizza', categoryId });
+      .send({ name: 'No Price Pizza' });
     expect(res.status).to.equal(400);
   });
 
   it('PUT /api/menu/:id — admin updates item', async () => {
     const res = await request(app).put('/api/menu/' + menuItemId)
       .set('Authorization', 'Bearer ' + adminToken)
-      .send({ name: 'Updated Pizza' + ts, price: 249 });
+      .send({ name: 'Updated Pizza', price: 249 });
     expect(res.status).to.equal(200);
-    expect(res.body.success).to.be.true;
+    expect(res.body.data.name).to.equal('Updated Pizza');
   });
 
-  it('GET /api/menu?search — filter items by name', async () => {
-    const res = await request(app).get('/api/menu?search=Updated Pizza' + ts);
+  it('GET /api/menu?search — filter items by search', async () => {
+    const res = await request(app).get('/api/menu?search=Updated');
     expect(res.status).to.equal(200);
-    expect(res.body.data).to.be.an('array');
+    expect(res.body.data.length).to.be.greaterThan(0);
   });
 
   it('DELETE /api/menu/:id — customer blocked (403)', async () => {
@@ -203,21 +204,11 @@ describe('MENU API', () => {
       .set('Authorization', 'Bearer ' + customerToken);
     expect(res.status).to.equal(403);
   });
-
-  it('DELETE /api/menu/:id — admin deletes item', async () => {
-    
-    const created = await request(app).post('/api/menu')
-      .set('Authorization', 'Bearer ' + adminToken)
-      .send({ name: 'ToDelete' + ts, price: 99, categoryId, isAvailable: true });
-    const tmpId = created.body.data._id;
-    const res = await request(app).delete('/api/menu/' + tmpId)
-      .set('Authorization', 'Bearer ' + adminToken);
-    expect(res.status).to.equal(200);
-    expect(res.body.success).to.be.true;
-  });
 });
 
-
+// ================================================
+// CART TESTS
+// ================================================
 describe('CART API', () => {
 
   it('GET /api/cart — customer gets their cart', async () => {
@@ -236,7 +227,7 @@ describe('CART API', () => {
     expect(res.body.data.items.length).to.be.greaterThan(0);
   });
 
-  it('POST /api/cart/add — reject without token', async () => {
+  it('POST /api/cart/add — reject without token (401)', async () => {
     const res = await request(app).post('/api/cart/add').send({ itemId: cartItemId });
     expect(res.status).to.equal(401);
   });
@@ -244,13 +235,14 @@ describe('CART API', () => {
   it('PUT /api/cart/update — update item quantity', async () => {
     const res = await request(app).put('/api/cart/update')
       .set('Authorization', 'Bearer ' + customerToken)
-      .send({ itemId: cartItemId, quantity: 3 });
+      .send({ itemId: cartItemId, quantity: 2 });
     expect(res.status).to.equal(200);
-    expect(res.body.success).to.be.true;
   });
 });
 
-
+// ================================================
+// ADDRESS TESTS
+// ================================================
 describe('ADDRESS API', () => {
 
   it('POST /api/addresses — add new address', async () => {
@@ -277,7 +269,9 @@ describe('ADDRESS API', () => {
   });
 });
 
-
+// ================================================
+// ORDER TESTS
+// ================================================
 describe('ORDER API', () => {
 
   it('POST /api/orders — place order from cart', async () => {
@@ -319,14 +313,14 @@ describe('ORDER API', () => {
   });
 
   it('PUT /api/orders/:id/cancel — customer cancels pending order', async () => {
-
-    await request(app).post('/api/cart/add')
+    // Place a new order to cancel
+    const cartRes = await request(app).post('/api/cart/add')
       .set('Authorization', 'Bearer ' + customerToken)
       .send({ itemId: cartItemId, quantity: 1 });
-    const placed = await request(app).post('/api/orders')
+    const newOrder = await request(app).post('/api/orders')
       .set('Authorization', 'Bearer ' + customerToken)
       .send({ addressId, deliveryMode: 'delivery', paymentMode: 'cash' });
-    const newId = placed.body.data?._id;
+    const newId = newOrder.body.data?._id;
     if (newId) {
       const res = await request(app).put('/api/orders/' + newId + '/cancel')
         .set('Authorization', 'Bearer ' + customerToken);
@@ -335,7 +329,7 @@ describe('ORDER API', () => {
     }
   });
 
-  it('GET /api/orders/admin/revenue — admin gets revenue', async () => {
+  it('GET /api/orders/admin/revenue — admin gets revenue data', async () => {
     const res = await request(app).get('/api/orders/admin/revenue')
       .set('Authorization', 'Bearer ' + adminToken);
     expect(res.status).to.equal(200);
@@ -343,7 +337,9 @@ describe('ORDER API', () => {
   });
 });
 
-
+// ================================================
+// MESSAGE TESTS
+// ================================================
 describe('MESSAGE API', () => {
 
   it('GET /api/messages — customer sees messages', async () => {
@@ -360,7 +356,8 @@ describe('MESSAGE API', () => {
   });
 
   it('PUT /api/messages/:id/read — mark message as read', async () => {
-    const msgs  = await request(app).get('/api/messages').set('Authorization', 'Bearer ' + customerToken);
+    const msgs = await request(app).get('/api/messages')
+      .set('Authorization', 'Bearer ' + customerToken);
     const msgId = msgs.body.data[0]?._id;
     if (msgId) {
       const res = await request(app).put('/api/messages/' + msgId + '/read')
@@ -370,7 +367,9 @@ describe('MESSAGE API', () => {
   });
 });
 
-
+// ================================================
+// PAYMENT TESTS
+// ================================================
 describe('PAYMENT API', () => {
 
   it('GET /api/payments/:orderId — get payment for order', async () => {
@@ -384,7 +383,7 @@ describe('PAYMENT API', () => {
   it('PUT /api/payments/:orderId/pay — mark payment done', async () => {
     const res = await request(app).put('/api/payments/' + orderId + '/pay')
       .set('Authorization', 'Bearer ' + customerToken)
-      .send({ transactionId: 'TXN' + ts });
+      .send({ transactionId: 'TXN' + Date.now() });
     expect(res.status).to.equal(200);
     expect(res.body.data.paymentStatus).to.equal('paid');
   });

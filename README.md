@@ -1,8 +1,9 @@
 # Pizza Store — Full Stack MERN (Domino's Style)
 # Redux + Formik + Yup + Jest + Mocha + Chai + Supertest
 
+=================================================
 PROJECT STRUCTURE
-
+=================================================
 
 PizzaStore/
 ├── backend/
@@ -42,9 +43,9 @@ PizzaStore/
     │   └── App.js
 
 
-
+=================================================
 STEP-BY-STEP COMMANDS
-
+=================================================
 
 TERMINAL 1 — MongoDB (Keep open always)
   mongod --dbpath C:\data\db
@@ -70,9 +71,9 @@ TERMINAL 3 — Frontend
   Opens: http://localhost:3000
 
 
-
+=================================================
 RUN TESTS
-
+=================================================
 
 Backend tests (Mocha + Chai + Supertest):
   cd backend
@@ -83,16 +84,16 @@ Frontend tests (Jest - Redux slice unit tests):
   npm test
 
 
-
+=================================================
 LOGIN CREDENTIALS
-
+=================================================
   Admin:    admin@pizza.com / admin123
   Customer: Register a new account at /register
 
 
-
+=================================================
 TECHNOLOGIES USED
-
+=================================================
   Redux Toolkit     → Global state management
   Formik            → Form handling (Login, Register, Cart address, Admin menu)
   Yup               → Form validation schemas

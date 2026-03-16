@@ -4,7 +4,7 @@ const MenuItem = require('../models/MenuItem');
 const { auth } = require('../middleware/auth');
 const router = express.Router();
 
-
+// GET my cart
 router.get('/', auth, async (req, res) => {
   try {
     let cart = await Cart.findOne({ userId: req.user.id });
@@ -13,7 +13,7 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-
+// POST add item to cart
 router.post('/add', auth, async (req, res) => {
   try {
     const { itemId, quantity = 1 } = req.body;
@@ -35,7 +35,7 @@ router.post('/add', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-
+// PUT update item quantity
 router.put('/update', auth, async (req, res) => {
   try {
     const { itemId, quantity } = req.body;
@@ -56,7 +56,7 @@ router.put('/update', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-
+// DELETE clear cart
 router.delete('/clear', auth, async (req, res) => {
   try {
     await Cart.findOneAndUpdate({ userId: req.user.id }, { items: [], totalAmount: 0 });

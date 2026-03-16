@@ -1,4 +1,4 @@
-
+// Jest — menuSlice unit tests
 import menuReducer, { setSelectedCategory, setSearchQuery, clearMenuError } from '../store/slices/menuSlice';
 
 describe('menuSlice', () => {

@@ -3,7 +3,7 @@ const Address = require('../models/Address');
 const { auth } = require('../middleware/auth');
 const router  = express.Router();
 
-
+// GET my addresses
 router.get('/', auth, async (req, res) => {
   try {
     const addrs = await Address.find({ userId: req.user.id });
@@ -11,7 +11,7 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-
+// POST add address
 router.post('/', auth, async (req, res) => {
   try {
     const { houseNumber, street, city, state, pincode, landmark, isDefault } = req.body;
@@ -23,7 +23,7 @@ router.post('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-
+// DELETE address
 router.delete('/:id', auth, async (req, res) => {
   try {
     await Address.findOneAndDelete({ _id: req.params.id, userId: req.user.id });

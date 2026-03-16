@@ -1,6 +1,17 @@
 const mongoose = require('mongoose');
+const dns = require('dns');
 const bcrypt   = require('bcryptjs');
 require('dotenv').config();
+
+const dnsServers = (process.env.DNS_SERVERS || '8.8.8.8,1.1.1.1').split(',').map(s => s.trim()).filter(Boolean);
+if (dnsServers.length > 0) {
+  try {
+    dns.setServers(dnsServers);
+    console.log('Seed DNS servers set to:', dnsServers);
+  } catch (err) {
+    console.warn('Could not set DNS servers for seed:', err.message);
+  }
+}
 
 const User     = require('./models/User');
 const Category = require('./models/Category');
@@ -24,12 +35,12 @@ async function seed() {
     await Category.deleteMany({});
     await MenuItem.deleteMany({});
 
-    
+    // Create admin
     const adminPass = await bcrypt.hash('admin123', 10);
     await User.create({ name: 'Admin', email: 'admin@pizza.com', password: adminPass, phone: '9999999999', role: 'admin' });
     console.log('Admin created: admin@pizza.com / admin123');
 
-    
+    // Create categories
     const cats = await Category.insertMany(categories);
     console.log('6 categories created');
 
@@ -40,7 +51,7 @@ async function seed() {
     const newCat   = cats.find(c => c.categoryName === 'New Launches');
     const bestCat  = cats.find(c => c.categoryName === 'Bestsellers');
 
-    
+    // Create menu items
     await MenuItem.insertMany([
       { name: 'Margherita Pizza',      description: 'Classic tomato and cheese pizza',        price: 199, categoryId: pizzaCat._id },
       { name: 'Pepperoni Pizza',       description: 'Loaded with pepperoni slices',           price: 299, categoryId: pizzaCat._id },

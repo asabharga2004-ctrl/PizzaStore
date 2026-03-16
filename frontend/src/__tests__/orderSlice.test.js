@@ -1,4 +1,4 @@
-
+// Jest — orderSlice unit tests
 import orderReducer, { clearOrderMsg } from '../store/slices/orderSlice';
 
 describe('orderSlice', () => {

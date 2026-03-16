@@ -1,4 +1,4 @@
-
+// Jest — Redux slice unit tests
 import authReducer, { logout, clearError } from '../store/slices/authSlice';
 
 describe('authSlice', () => {

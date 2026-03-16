@@ -3,7 +3,7 @@ const MenuItem = require('../models/MenuItem');
 const { auth, adminOnly } = require('../middleware/auth');
 const router = express.Router();
 
-
+// GET all menu items - supports ?category=id&search=name
 router.get('/', async (req, res) => {
   try {
     const filter = {};
@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-
+// GET single menu item
 router.get('/:id', async (req, res) => {
   try {
     const item = await MenuItem.findById(req.params.id).populate('categoryId', 'categoryName');
@@ -23,7 +23,7 @@ router.get('/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-
+// POST create menu item (admin only)
 router.post('/', auth, adminOnly, async (req, res) => {
   try {
     const { name, description, price, categoryId, image, isAvailable } = req.body;
@@ -34,7 +34,7 @@ router.post('/', auth, adminOnly, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-
+// PUT update menu item (admin only)
 router.put('/:id', auth, adminOnly, async (req, res) => {
   try {
     const item = await MenuItem.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -43,7 +43,7 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-
+// DELETE menu item (admin only)
 router.delete('/:id', auth, adminOnly, async (req, res) => {
   try {
     await MenuItem.findByIdAndDelete(req.params.id);

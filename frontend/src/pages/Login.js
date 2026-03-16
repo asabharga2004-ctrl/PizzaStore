@@ -4,27 +4,27 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { loginUser, clearError } from '../store/slices/authSlice';
- 
+
 const schema = Yup.object({
   email:    Yup.string().email('Invalid email').required('Email is required'),
   password: Yup.string().min(6,'Min 6 characters').required('Password is required')
 });
- 
+
 export default function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error, user } = useSelector(s => s.auth);
   const [showPwd, setShowPwd] = React.useState(false);
- 
+
   useEffect(() => { dispatch(clearError()); }, []);
   useEffect(() => { if (user) navigate(user.role === 'admin' ? '/admin/orders' : '/'); }, [user]);
- 
+
   const formik = useFormik({
     initialValues: { email:'', password:'' },
     validationSchema: schema,
     onSubmit: values => { dispatch(loginUser(values)); }
   });
- 
+
   const inp = (name, type='text', ph='') => (
     <div style={{ marginBottom:'16px' }}>
       <label style={{ fontSize:'11px', fontWeight:'600', color:'#888', letterSpacing:'1px', display:'block', marginBottom:'6px' }}>
@@ -47,7 +47,7 @@ export default function Login() {
       )}
     </div>
   );
- 
+
   return (
     <div style={{ minHeight:'100vh', background:'#0f0f0f', display:'flex' }}>
       <div style={{ flex:1, background:'linear-gradient(135deg,#e63312,#8B0000)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px', overflow:'hidden', position:'relative' }}>
@@ -63,14 +63,14 @@ export default function Login() {
           ))}
         </div>
       </div>
- 
+
       <div style={{ width:'460px', background:'#1a1a1a', display:'flex', alignItems:'center', justifyContent:'center', padding:'50px 40px' }}>
         <div style={{ width:'100%', maxWidth:'360px' }}>
           <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'32px', letterSpacing:'2px', marginBottom:'6px' }}>WELCOME BACK</h2>
           <p style={{ color:'#888', fontSize:'14px', marginBottom:'24px' }}>Login to order your favourite pizza</p>
- 
+
           {error && <div style={{ background:'rgba(231,76,60,0.15)', border:'1px solid rgba(231,76,60,0.4)', borderRadius:'6px', padding:'10px 14px', marginBottom:'16px', fontSize:'13px', color:'#e74c3c' }}>{error}</div>}
- 
+
           <form onSubmit={formik.handleSubmit}>
             {inp('email','email','you@example.com')}
             <div style={{ position:'relative' }}>
@@ -89,4 +89,3 @@ export default function Login() {
     </div>
   );
 }
- 

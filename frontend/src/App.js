@@ -24,6 +24,12 @@ function AdminRoute({ children }) {
   return user && user.role === 'admin' ? children : <Navigate to="/login" />;
 }
 
+function HomeRoute() {
+  const { user } = useSelector(s => s.auth);
+  if (!user) return <Navigate to="/login" />;
+  return user.role === 'admin' ? <Navigate to="/admin/orders" /> : <MenuPage />;
+}
+
 function AppInner() {
   const dispatch      = useDispatch();
   const { user, token } = useSelector(s => s.auth);
@@ -41,14 +47,14 @@ function AppInner() {
       <Routes>
         <Route path="/login"          element={<Login />} />
         <Route path="/register"       element={<Register />} />
-        <Route path="/"               element={<PrivateRoute><MenuPage /></PrivateRoute>} />
+        <Route path="/"               element={<HomeRoute />} />
         <Route path="/cart"           element={<PrivateRoute><CartPage /></PrivateRoute>} />
         <Route path="/orders"         element={<PrivateRoute><OrdersPage /></PrivateRoute>} />
         <Route path="/messages"       element={<PrivateRoute><MessagesPage /></PrivateRoute>} />
         <Route path="/admin/menu"     element={<AdminRoute><AdminMenu /></AdminRoute>} />
         <Route path="/admin/orders"   element={<AdminRoute><AdminOrders /></AdminRoute>} />
         <Route path="/admin/revenue"  element={<AdminRoute><AdminRevenue /></AdminRoute>} />
-        <Route path="*"               element={<Navigate to="/login" />} />
+        <Route path="*"               element={<Navigate to="/" />} />
       </Routes>
     </>
   );

@@ -3,7 +3,7 @@ const Payment = require('../models/Payment');
 const { auth, adminOnly } = require('../middleware/auth');
 const router  = express.Router();
 
-
+// GET payment by orderId
 router.get('/:orderId', auth, async (req, res) => {
   try {
     const payment = await Payment.findOne({ orderId: req.params.orderId });
@@ -12,7 +12,7 @@ router.get('/:orderId', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-
+// PUT mark payment done
 router.put('/:orderId/pay', auth, async (req, res) => {
   try {
     const payment = await Payment.findOneAndUpdate(

@@ -3,6 +3,7 @@ const Category = require('../models/Category');
 const { auth, adminOnly } = require('../middleware/auth');
 const router = express.Router();
 
+// GET all categories (public)
 router.get('/', async (req, res) => {
   try {
     const cats = await Category.find().sort({ categoryName: 1 });
@@ -10,7 +11,7 @@ router.get('/', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-
+// POST create category (admin only)
 router.post('/', auth, adminOnly, async (req, res) => {
   try {
     const { categoryName } = req.body;
@@ -20,7 +21,7 @@ router.post('/', auth, adminOnly, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-
+// PUT update category (admin only)
 router.put('/:id', auth, adminOnly, async (req, res) => {
   try {
     const cat = await Category.findByIdAndUpdate(req.params.id, { categoryName: req.body.categoryName }, { new: true });
@@ -29,7 +30,7 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-
+// DELETE category (admin only)
 router.delete('/:id', auth, adminOnly, async (req, res) => {
   try {
     await Category.findByIdAndDelete(req.params.id);

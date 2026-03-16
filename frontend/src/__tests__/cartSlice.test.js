@@ -1,4 +1,4 @@
-
+// Jest — cartSlice unit tests
 import cartReducer, { clearCartMsg, resetCart } from '../store/slices/cartSlice';
 
 describe('cartSlice', () => {
