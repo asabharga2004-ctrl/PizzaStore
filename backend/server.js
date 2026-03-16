@@ -15,7 +15,18 @@ if (dnsServers.length > 0) {
 }
 
 const app = express();
-app.use(cors());
+
+// ─── CORS Fix for Firebase ───
+app.use(cors({
+  origin: [
+    'https://pizzastore-app-2026.web.app',
+    'https://pizzastore-app-2026.firebaseapp.com',
+    'http://localhost:3000',
+    'http://localhost:3001'
+  ],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Routes
