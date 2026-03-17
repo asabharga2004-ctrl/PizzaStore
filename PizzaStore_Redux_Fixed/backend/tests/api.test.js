@@ -1,0 +1,411 @@
+// ================================================
+// Mocha + Chai + Supertest ΓÇö API Tests
+// Run: npm test  (from backend folder)
+// ================================================
+const request  = require('supertest');
+const { expect } = require('chai');
+const mongoose   = require('mongoose');
+
+// Set test env BEFORE requiring app
+process.env.MONGO_URI  = 'mongodb://localhost:27017/pizzastore_test';
+process.env.JWT_SECRET = 'pizzasecret123';
+process.env.PORT       = '5099';
+
+const app = require('../server');
+
+let adminToken    = '';
+let customerToken = '';
+let customerId    = '';
+let categoryId    = '';
+let menuItemId    = '';
+let cartItemId    = '';
+let addressId     = '';
+let orderId       = '';
+
+const customerData = {
+  name: 'Test User ' + Date.now(),
+  email: 'testuser' + Date.now() + '@pizza.com',
+  password: 'test123',
+  phone: '9999999999'
+};
+
+// ---- Connect once before all tests ----
+// ---- Connect once before all tests ----
+before(async () => {
+  await mongoose.connect(process.env.MONGO_URI);
+  console.log('  Test DB connected: pizzastore_test');
+
+  // create admin user if not exists
+  const User = require('../models/User');
+  const bcrypt = require('bcryptjs');
+
+  const existingAdmin = await User.findOne({ email: 'admin@pizza.com' });
+
+  if (!existingAdmin) {
+    const hashedPassword = await bcrypt.hash('admin123', 10);
+
+    await User.create({
+      name: 'Admin',
+      email: 'admin@pizza.com',
+      password: hashedPassword,
+      role: 'admin',
+      phone: '9999999999'
+    });
+
+    console.log('  Test admin created.');
+  }
+});
+
+// ---- Disconnect after all tests ----
+after(async () => {
+  // Clean up test data
+  const User    = require('../models/User');
+  const Cart    = require('../models/Cart');
+  const Order   = require('../models/Order');
+  const Address = require('../models/Address');
+  const Message = require('../models/Message');
+  const Payment = require('../models/Payment');
+  const Category = require('../models/Category');
+  const MenuItem = require('../models/MenuItem');
+
+  if (customerId) {
+    await Cart.deleteMany({ userId: customerId });
+    await Order.deleteMany({ userId: customerId });
+    await Address.deleteMany({ userId: customerId });
+    await Message.deleteMany({ userId: customerId });
+    await Payment.deleteMany({ userId: customerId });
+    await User.findByIdAndDelete(customerId);
+  }
+  if (categoryId) await Category.findByIdAndDelete(categoryId);
+  if (menuItemId) await MenuItem.findByIdAndDelete(menuItemId);
+
+  await mongoose.connection.close();
+  console.log('  Test DB disconnected.');
+});
+
+// ================================================
+// AUTH TESTS
+// ================================================
+describe('AUTH API', () => {
+
+  it('POST /api/auth/register ΓÇö register new customer', async () => {
+    const res = await request(app).post('/api/auth/register').send(customerData);
+    expect(res.status).to.equal(201);
+    expect(res.body.success).to.be.true;
+    expect(res.body.token).to.be.a('string');
+    expect(res.body.user.role).to.equal('customer');
+    customerToken = res.body.token;
+    customerId    = res.body.user.id;
+  });
+
+  it('POST /api/auth/register ΓÇö reject duplicate email', async () => {
+    const res = await request(app).post('/api/auth/register').send(customerData);
+    expect(res.status).to.equal(400);
+    expect(res.body.success).to.be.false;
+  });
+
+  it('POST /api/auth/register ΓÇö reject missing fields', async () => {
+    const res = await request(app).post('/api/auth/register').send({ email: 'x@x.com' });
+    expect(res.status).to.equal(400);
+    expect(res.body.success).to.be.false;
+  });
+
+  it('POST /api/auth/login ΓÇö admin login successfully', async () => {
+    const res = await request(app).post('/api/auth/login').send({ email: 'admin@pizza.com', password: 'admin123' });
+    expect(res.status).to.equal(200);
+    expect(res.body.success).to.be.true;
+    expect(res.body.user.role).to.equal('admin');
+    adminToken = res.body.token;
+  });
+
+  it('POST /api/auth/login ΓÇö reject wrong password', async () => {
+    const res = await request(app).post('/api/auth/login').send({ email: 'admin@pizza.com', password: 'wrongpass' });
+    expect(res.status).to.equal(400);
+    expect(res.body.success).to.be.false;
+  });
+
+  it('POST /api/auth/login ΓÇö reject unknown email', async () => {
+    const res = await request(app).post('/api/auth/login').send({ email: 'nobody@x.com', password: 'pass123' });    
+    expect(res.status).to.equal(400);
+    expect(res.body.success).to.be.false;
+  });
+
+  it('GET /api/auth/me ΓÇö return current user', async () => {
+    const res = await request(app).get('/api/auth/me').set('Authorization', 'Bearer ' + customerToken);
+    expect(res.status).to.equal(200);
+    expect(res.body.user).to.have.property('email');
+  });
+
+  it('GET /api/auth/me ΓÇö reject without token', async () => {
+    const res = await request(app).get('/api/auth/me');
+    expect(res.status).to.equal(401);
+  });
+});
+
+// ================================================
+// CATEGORY TESTS
+// ================================================
+describe('CATEGORY API', () => {
+
+  it('GET /api/categories ΓÇö return all categories', async () => {
+    const res = await request(app).get('/api/categories');
+    expect(res.status).to.equal(200);
+    expect(res.body.success).to.be.true;
+    expect(res.body.data).to.be.an('array');
+    if (res.body.data.length > 0) categoryId = res.body.data[0]._id;
+  });
+
+  it('POST /api/categories ΓÇö admin creates category', async () => {
+    const res = await request(app).post('/api/categories')
+      .set('Authorization', 'Bearer ' + adminToken)
+      .send({ categoryName: 'TestCat' + Date.now() });
+    expect(res.status).to.equal(201);
+    expect(res.body.success).to.be.true;
+    categoryId = res.body.data._id;
+  });
+
+  it('POST /api/categories ΓÇö customer blocked (403)', async () => {
+    const res = await request(app).post('/api/categories')
+      .set('Authorization', 'Bearer ' + customerToken)
+      .send({ categoryName: 'Hack' });
+    expect(res.status).to.equal(403);
+  });
+
+  it('POST /api/categories ΓÇö reject missing categoryName', async () => {
+    const res = await request(app).post('/api/categories')
+      .set('Authorization', 'Bearer ' + adminToken).send({});
+    expect(res.status).to.equal(400);
+  });
+});
+
+// ================================================
+// MENU TESTS
+// ================================================
+describe('MENU API', () => {
+
+  it('GET /api/menu ΓÇö return all menu items', async () => {
+    const res = await request(app).get('/api/menu');
+    expect(res.status).to.equal(200);
+    expect(res.body.data).to.be.an('array');
+  });
+
+  it('POST /api/menu ΓÇö admin creates item', async () => {
+    const res = await request(app).post('/api/menu')
+      .set('Authorization', 'Bearer ' + adminToken)
+      .send({ name: 'Test Pizza', price: 199, categoryId, description: 'Yummy', isAvailable: true });
+    expect(res.status).to.equal(201);
+    expect(res.body.success).to.be.true;
+    menuItemId  = res.body.data._id;
+    cartItemId  = res.body.data._id;
+  });
+
+  it('POST /api/menu ΓÇö reject missing fields', async () => {
+    const res = await request(app).post('/api/menu')
+      .set('Authorization', 'Bearer ' + adminToken)
+      .send({ name: 'No Price Pizza' });
+    expect(res.status).to.equal(400);
+  });
+
+  it('PUT /api/menu/:id ΓÇö admin updates item', async () => {
+    const res = await request(app).put('/api/menu/' + menuItemId)
+      .set('Authorization', 'Bearer ' + adminToken)
+      .send({ name: 'Updated Pizza', price: 249 });
+    expect(res.status).to.equal(200);
+    expect(res.body.data.name).to.equal('Updated Pizza');
+  });
+
+  it('GET /api/menu?search ΓÇö filter items by search', async () => {
+    const res = await request(app).get('/api/menu?search=Updated');
+    expect(res.status).to.equal(200);
+    expect(res.body.data.length).to.be.greaterThan(0);
+  });
+
+  it('DELETE /api/menu/:id ΓÇö customer blocked (403)', async () => {
+    const res = await request(app).delete('/api/menu/' + menuItemId)
+      .set('Authorization', 'Bearer ' + customerToken);
+    expect(res.status).to.equal(403);
+  });
+});
+
+// ================================================
+// CART TESTS
+// ================================================
+describe('CART API', () => {
+
+  it('GET /api/cart ΓÇö customer gets their cart', async () => {
+    const res = await request(app).get('/api/cart')
+      .set('Authorization', 'Bearer ' + customerToken);
+    expect(res.status).to.equal(200);
+    expect(res.body.success).to.be.true;
+  });
+
+  it('POST /api/cart/add ΓÇö add item to cart', async () => {
+    const res = await request(app).post('/api/cart/add')
+      .set('Authorization', 'Bearer ' + customerToken)
+      .send({ itemId: cartItemId, quantity: 1 });
+    expect(res.status).to.equal(200);
+    expect(res.body.data.items).to.be.an('array');
+    expect(res.body.data.items.length).to.be.greaterThan(0);
+  });
+
+  it('POST /api/cart/add ΓÇö reject without token (401)', async () => {
+    const res = await request(app).post('/api/cart/add').send({ itemId: cartItemId });
+    expect(res.status).to.equal(401);
+  });
+
+  it('PUT /api/cart/update ΓÇö update item quantity', async () => {
+    const res = await request(app).put('/api/cart/update')
+      .set('Authorization', 'Bearer ' + customerToken)
+      .send({ itemId: cartItemId, quantity: 2 });
+    expect(res.status).to.equal(200);
+  });
+});
+
+// ================================================
+// ADDRESS TESTS
+// ================================================
+describe('ADDRESS API', () => {
+
+  it('POST /api/addresses ΓÇö add new address', async () => {
+    const res = await request(app).post('/api/addresses')
+      .set('Authorization', 'Bearer ' + customerToken)
+      .send({ houseNumber: '12A', street: 'MG Road', city: 'Vijayawada', state: 'AP', pincode: '520001', isDefault: true });
+    expect(res.status).to.equal(201);
+    expect(res.body.success).to.be.true;
+    addressId = res.body.data._id;
+  });
+
+  it('GET /api/addresses ΓÇö return customer addresses', async () => {
+    const res = await request(app).get('/api/addresses')
+      .set('Authorization', 'Bearer ' + customerToken);
+    expect(res.status).to.equal(200);
+    expect(res.body.data.length).to.be.greaterThan(0);
+  });
+
+  it('POST /api/addresses ΓÇö reject missing fields', async () => {
+    const res = await request(app).post('/api/addresses')
+      .set('Authorization', 'Bearer ' + customerToken)
+      .send({ houseNumber: '5B' });
+    expect(res.status).to.equal(400);
+  });
+});
+
+// ================================================
+// ORDER TESTS
+// ================================================
+describe('ORDER API', () => {
+
+  it('POST /api/orders ΓÇö place order from cart', async () => {
+    const res = await request(app).post('/api/orders')
+      .set('Authorization', 'Bearer ' + customerToken)
+      .send({ addressId, deliveryMode: 'delivery', paymentMode: 'cash' });
+    expect(res.status).to.equal(201);
+    expect(res.body.success).to.be.true;
+    expect(res.body.data.orderStatus).to.equal('pending');
+    orderId = res.body.data._id;
+  });
+
+  it('GET /api/orders/my ΓÇö customer sees own orders', async () => {
+    const res = await request(app).get('/api/orders/my')
+      .set('Authorization', 'Bearer ' + customerToken);
+    expect(res.status).to.equal(200);
+    expect(res.body.data.length).to.be.greaterThan(0);
+  });
+
+  it('GET /api/orders/all ΓÇö admin sees all orders', async () => {
+    const res = await request(app).get('/api/orders/all')
+      .set('Authorization', 'Bearer ' + adminToken);
+    expect(res.status).to.equal(200);
+    expect(res.body.data).to.be.an('array');
+  });
+
+  it('GET /api/orders/all ΓÇö customer blocked (403)', async () => {
+    const res = await request(app).get('/api/orders/all')
+      .set('Authorization', 'Bearer ' + customerToken);
+    expect(res.status).to.equal(403);
+  });
+
+  it('PUT /api/orders/:id/status ΓÇö admin accepts order', async () => {
+    const res = await request(app).put('/api/orders/' + orderId + '/status')
+      .set('Authorization', 'Bearer ' + adminToken)
+      .send({ orderStatus: 'accepted', messageText: 'Preparing your order!' });
+    expect(res.status).to.equal(200);
+    expect(res.body.data.orderStatus).to.equal('accepted');
+  });
+
+  it('PUT /api/orders/:id/cancel ΓÇö customer cancels pending order', async () => {
+    // Place a new order to cancel
+    const cartRes = await request(app).post('/api/cart/add')
+      .set('Authorization', 'Bearer ' + customerToken)
+      .send({ itemId: cartItemId, quantity: 1 });
+    const newOrder = await request(app).post('/api/orders')
+      .set('Authorization', 'Bearer ' + customerToken)
+      .send({ addressId, deliveryMode: 'delivery', paymentMode: 'cash' });
+    const newId = newOrder.body.data?._id;
+    if (newId) {
+      const res = await request(app).put('/api/orders/' + newId + '/cancel')
+        .set('Authorization', 'Bearer ' + customerToken);
+      expect(res.status).to.equal(200);
+      expect(res.body.data.orderStatus).to.equal('cancelled');
+    }
+  });
+
+  it('GET /api/orders/admin/revenue ΓÇö admin gets revenue data', async () => {
+    const res = await request(app).get('/api/orders/admin/revenue')
+      .set('Authorization', 'Bearer ' + adminToken);
+    expect(res.status).to.equal(200);
+    expect(res.body.data).to.be.an('array');
+  });
+});
+
+// ================================================
+// MESSAGE TESTS
+// ================================================
+describe('MESSAGE API', () => {
+
+  it('GET /api/messages ΓÇö customer sees messages', async () => {
+    const res = await request(app).get('/api/messages')
+      .set('Authorization', 'Bearer ' + customerToken);
+    expect(res.status).to.equal(200);
+    expect(res.body.data).to.be.an('array');
+    expect(res.body.data.length).to.be.greaterThan(0);
+  });
+
+  it('GET /api/messages ΓÇö reject without token (401)', async () => {
+    const res = await request(app).get('/api/messages');
+    expect(res.status).to.equal(401);
+  });
+
+  it('PUT /api/messages/:id/read ΓÇö mark message as read', async () => {
+    const msgs = await request(app).get('/api/messages')
+      .set('Authorization', 'Bearer ' + customerToken);
+    const msgId = msgs.body.data[0]?._id;
+    if (msgId) {
+      const res = await request(app).put('/api/messages/' + msgId + '/read')
+        .set('Authorization', 'Bearer ' + customerToken);
+      expect(res.status).to.equal(200);
+    }
+  });
+});
+
+// ================================================
+// PAYMENT TESTS
+// ================================================
+describe('PAYMENT API', () => {
+
+  it('GET /api/payments/:orderId ΓÇö get payment for order', async () => {
+    const res = await request(app).get('/api/payments/' + orderId)
+      .set('Authorization', 'Bearer ' + customerToken);
+    expect(res.status).to.equal(200);
+    expect(res.body.success).to.be.true;
+    expect(res.body.data.paidAmount).to.be.greaterThan(0);
+  });
+
+  it('PUT /api/payments/:orderId/pay ΓÇö mark payment done', async () => {
+    const res = await request(app).put('/api/payments/' + orderId + '/pay')
+      .set('Authorization', 'Bearer ' + customerToken)
+      .send({ transactionId: 'TXN' + Date.now() });
+    expect(res.status).to.equal(200);
+    expect(res.body.data.paymentStatus).to.equal('paid');
+  });
+});
